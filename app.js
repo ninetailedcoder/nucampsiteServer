@@ -1,6 +1,8 @@
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
+const session = require('express-session'); // import the express-session middleware
+const FileStore = require('session-file-store')(session); // import the session-file-store middleware
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
@@ -9,6 +11,7 @@ var usersRouter = require('./routes/users');
 const campsiteRouter = require('./routes/campsiteRouter');
 const promotionRouter = require('./routes/promotionRouter');
 const partnerRouter = require('./routes/partnerRouter');
+
 
 const mongoose = require('mongoose'); // import mongoose
 
@@ -35,6 +38,64 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser('12345-67890-09876-54321'));
+app.use(session({ 
+  name: 'session-id',
+  secret: '12345-67890-09876-54321',
+  resave: 'false',
+  store: new FileStore()
+})) // use the express-session middleware
+
+function auth(req, res, next) {
+  console.log(req.session);
+
+  if (!req.session.user) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader) {
+          const err = new Error('You are not authenticated!');
+          res.setHeader('WWW-Authenticate', 'Basic');
+          err.status = 401;
+          return next(err);
+      }
+
+      const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':');
+      const user = auth[0];
+      const pass = auth[1];
+      if (user === 'admin' && pass === 'password') {
+          req.session.user = 'admin';
+          return next(); // authorized
+      } else {
+          const err = new Error('You are not authenticated!');
+          res.setHeader('WWW-Authenticate', 'Basic');
+          err.status = 401;
+          return next(err);
+      }
+  } else {
+      if (req.session.user === 'admin') {
+          return next();
+      } else {
+          const err = new Error('You are not authenticated!');
+          err.status = 401;
+          return next(err);
+      }
+  }
+}
+
+
+
+  console.log(req.session);
+  if (!req.session.user) { // if the user property does not exist in the session object
+      const err = new Error('You are not authenticated!'); // create a new error object
+      err.status = 401; // set the error status code
+      return next(err); // pass the error to the Express error handler
+  } else {
+      if (req.session.user === 'authenticated') { // if the user property exists in the session object and its value is 'authenticated'
+          next(); // call the next middleware function
+      } else {
+          const err = new Error('You are not authenticated!'); // create a new error object
+          err.status = 401; // set the error status code
+          return next(err); // pass the error to the Express error handler
+      }
+  }
 
 const auth = (req, res, next) => { // create a middleware function named auth
   if (!req.signedCookies.user){
