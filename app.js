@@ -34,27 +34,37 @@ app.set('view engine', 'jade');
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
+app.use(cookieParser('12345-67890-09876-54321'));
 
 const auth = (req, res, next) => { // create a middleware function named auth
-  console.log(req.headers); // log the incoming request headers to the console
-  const authHeader = req.headers.authorization; // extract the authorization header from the incoming request
-  if (!authHeader) { // if the authorization header is not present in the incoming request
-      const err = new Error('You are not authenticated!'); // create a new error object
-      res.setHeader('WWW-Authenticate', 'Basic'); // set the response header
-      err.status = 401; // set the error status code
-      return next(err); // pass the error to the Express error handler
-  }
-  const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':'); // decode the authorization header and extract the username and password
-  const user = auth[0]; // extract the username
-  const pass = auth[1]; // extract the password
-  if (user === 'admin' && pass === 'password') { // if the username and password are correct
-      return next(); // call the next middleware function
-  } else { // if the username and password are incorrect
-      const err = new Error('You are not authenticated!'); // create a new error object
-      res.setHeader('WWW-Authenticate', 'Basic'); // set the response header
-      err.status = 401; // set the error status code
-      return next(err); // pass the error to the Express error handler
+  if (!req.signedCookies.user){
+    const authHeader = req.headers.authorization; // extract the authorization header from the incoming request
+    if (!authHeader) { // if the authorization header is not present in the incoming request
+        const err = new Error('You are not authenticated!'); // create a new error object
+        res.setHeader('WWW-Authenticate', 'Basic'); // set the response header
+        err.status = 401; // set the error status code
+        return next(err); // pass the error to the Express error handler
+    }
+    const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':'); // decode the authorization header and extract the username and password
+    const user = auth[0]; // extract the username
+    const pass = auth[1]; // extract the password
+    if (user === 'admin' && pass === 'password') { // if the username and password are correct
+        res.cookie('user', 'admin', {signed: true})
+        return next(); // call the next middleware function
+    } else { // if the username and password are incorrect
+        const err = new Error('You are not authenticated!'); // create a new error object
+        res.setHeader('WWW-Authenticate', 'Basic'); // set the response header
+        err.status = 401; // set the error status code
+        return next(err); // pass the error to the Express error handler
+      }
+  } else {
+      if (req.signedCookies.user === 'admin'){
+        return next()
+      } else {
+        const err = new Error('You are not authenticated!'); // create a new error object
+        err.status = 401; // set the error status code
+        return next(err); // pass the error to the Express error handler
+      }
   }
 }
 
