@@ -1,10 +1,12 @@
 const express = require('express');
 const Campsite = require('../models/campsite'); // import the Campsite model
 const campsiteRouter = express.Router(); // create a new Express router
+const authenticate = require('../authenticate'); // import the authenticate module
 campsiteRouter.route('/') // use the router.route method to chain all routing methods together
-// use app.all to handle all HTTP verbs
+// use app.all to handle all HTTP methods
 .get((req, res, next) => { 
     Campsite.find() // use the Campsite model to find all documents in the campsites collection
+    .populate('comments.author') // use the populate method to populate the author field in the comments subdocuments with the user document referenced by the ObjectId
     .then(campsites => { // use a promise to handle the returned campsites
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
@@ -13,8 +15,9 @@ campsiteRouter.route('/') // use the router.route method to chain all routing me
     .catch(err => next(err)); // pass any errors to the Express error handler
 })// use app.get to handle GET requests
 
-.post((req, res, next) => {
+.post(authenticate.verifyUser,(req, res, next) => {
     Campsite.create(req.body) // use the Campsite model to create a new campsite document from the request body
+    // save current user as the auther of the comment
     .then(campsite => { // use a promise to handle the returned campsite
         console.log('Campsite Created ', campsite);
         res.statusCode = 200;
@@ -23,12 +26,12 @@ campsiteRouter.route('/') // use the router.route method to chain all routing me
     })
     .catch(err => next(err)); // pass any errors to the Express error handler
 }) // use app.post to handle POST requests
-.put((req, res) => {
+.put(authenticate.verifyUser,(req, res) => {
     res.statusCode = 403;
     res.end('PUT operation not supported on /campsites');
 })// use app.put to handle PUT requests
 
-.delete((req, res, next) => {
+.delete(authenticate.verifyUser,(req, res, next) => {
     Campsite.deleteMany() // use the Campsite model to delete all documents in the campsites collection
     .then(response => { // use a promise to handle the returned response
         res.statusCode = 200;
@@ -41,7 +44,7 @@ campsiteRouter.route('/') // use the router.route method to chain all routing me
 campsiteRouter.route('/:campsiteId') // use the router.route method to chain all routing methods together
 .get((req, res,next) => {
     Campsite.findById(req.params.campsiteId) // use the Campsite model to find a single campsite document by its _id
-
+    .populate('comments.author') // use the populate method to populate the author field in the comments subdocuments with the user document referenced by the ObjectId
     .then(campsite => { // use a promise to handle the returned campsite
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
@@ -50,12 +53,12 @@ campsiteRouter.route('/:campsiteId') // use the router.route method to chain all
     .catch(err => next(err)); // pass any errors to the Express error handler
 })
 
-.post((req, res) => {
+.post(authenticate.verifyUser,(req, res) => {
     res.statusCode = 403;
     res.end(`POST operation not supported on /campsites/${req.params.campsiteId}`);
 })
 
-.put((req, res,next) => {
+.put(authenticate.verifyUser,(req, res,next) => {
     Campsite.findByIdAndUpdate(req.params.campsiteId, { // use the Campsite model to find a single campsite document by its _id and update it
         $set: req.body // use the $set operator to set the campsite document's properties to the values in the request body
     }, { new: true }) // use the { new: true } option to return the updated campsite document to the then() function instead of the original
@@ -67,7 +70,7 @@ campsiteRouter.route('/:campsiteId') // use the router.route method to chain all
     .catch(err => next(err)); // pass any errors to the Express error handler
 })
 
-.delete((req, res,next) => {
+.delete(authenticate.verifyUser,(req, res,next) => {
     Campsite.findByIdAndDelete(req.params.campsiteId) // use the Campsite model to find a single campsite document by its _id and delete it
     .then(response => { // use a promise to handle the returned response
         res.statusCode = 200;
@@ -80,6 +83,7 @@ campsiteRouter.route('/:campsiteId') // use the router.route method to chain all
 campsiteRouter.route('/:campsiteId/comments') // use the router.route method to chain all routing methods together
 .get((req, res,next) => {
     Campsite.findById(req.params.campsiteId) // use the Campsite model to find a single campsite document by its _id
+    .populate('comments.author') // use the populate method to populate the author field in the comments subdocuments with the user document referenced by the ObjectId
     .then(campsite => { // use a promise to handle the returned campsite
         if (campsite) { // check if the campsite document exists
             res.statusCode = 200;
@@ -94,10 +98,11 @@ campsiteRouter.route('/:campsiteId/comments') // use the router.route method to 
     .catch(err => next(err)); // pass any errors to the Express error handler
 })
 
-.post((req, res,next) => {
+.post(authenticate.verifyUser,(req, res,next) => {
     Campsite.findById(req.params.campsiteId) // use the Campsite model to find a single campsite document by its _id
     .then(campsite => { // use a promise to handle the returned campsite
         if (campsite) { // check if the campsite document exists
+            req.body.author = req.user._id; // add the user's _id to the request body
             campsite.comments.push(req.body); // push the new comment onto the campsite's comments array
             campsite.save() // save the updated campsite document to the database
             .then(campsite => { // use a promise to handle the returned campsite
@@ -115,12 +120,12 @@ campsiteRouter.route('/:campsiteId/comments') // use the router.route method to 
     .catch(err => next(err)); // pass any errors to the Express error handler
 })
 
-.put((req, res) => {
+.put(authenticate.verifyUser,(req, res) => {
     res.statusCode = 403;
     res.end(`PUT operation not supported on /campsites/${req.params.campsiteId}/comments`);
 })
 
-.delete((req, res,next) => {
+.delete(authenticate.verifyUser,(req, res,next) => {
     Campsite.findById(req.params.campsiteId) // use the Campsite model to find a single campsite document by its _id
     .then(campsite => { // use a promise to handle the returned campsite
         if (campsite) { // check if the campsite document exists
@@ -146,6 +151,7 @@ campsiteRouter.route('/:campsiteId/comments') // use the router.route method to 
 campsiteRouter.route('/:campsiteId/comments/:commentId') // use the router.route method to chain all routing methods together
 .get((req, res,next) => {
     Campsite.findById(req.params.campsiteId) // use the Campsite model to find a single campsite document by its _id
+    .populate('comments.author') // use the populate method to populate the author field in the comments subdocuments with the user document referenced by the ObjectId
     .then(campsite => { // use a promise to handle the returned campsite
         if (campsite && campsite.comments.id(req.params.commentId)) { // check if the campsite document exists and the comment subdocument exists
             res.statusCode = 200;
@@ -164,12 +170,12 @@ campsiteRouter.route('/:campsiteId/comments/:commentId') // use the router.route
     .catch(err => next(err)); // pass any errors to the Express error handler
 })
 
-.post((req, res) => {
+.post(authenticate.verifyUser,(req, res) => {
     res.statusCode = 403;
     res.end(`POST operation not supported on /campsites/${req.params.campsiteId}/comments/${req.params.commentId}`);
 })
 
-.put((req, res,next) => {
+.put(authenticate.verifyUser,(req, res,next) => {
     Campsite.findById(req.params.campsiteId) // use the Campsite model to find a single campsite document by its _id
     .then(campsite => { // use a promise to handle the returned campsite
         if (campsite && campsite.comments.id(req.params.commentId)) { // check if the campsite document exists and the comment subdocument exists
@@ -199,7 +205,7 @@ campsiteRouter.route('/:campsiteId/comments/:commentId') // use the router.route
     .catch(err => next(err)); // pass any errors to the Express error handler
 })
 
-.delete((req, res,next) => {
+.delete(authenticate.verifyUser,(req, res,next) => {
     Campsite.findById(req.params.campsiteId) // use the Campsite model to find a single campsite document by its _id
     .then(campsite => { // use a promise to handle the returned campsite
         if (campsite && campsite.comments.id(req.params.commentId)) { // check if the campsite document exists and the comment subdocument exists

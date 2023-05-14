@@ -1,8 +1,6 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-require('mongoose-currency').loadType(mongoose); // import the mongoose-currency module
-
 const partnerSchema = new Schema({
     name: {
         type: String,

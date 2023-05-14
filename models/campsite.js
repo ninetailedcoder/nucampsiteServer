@@ -15,9 +15,9 @@ const commentSchema = new Schema({
         type: String,
         required: true
     },
-    author: {
-        type: String,
-        required: true
+    author: { // type of object id that references the user document
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User' // reference the user document
     }
 }, {
     timestamps: true

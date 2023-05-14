@@ -1,7 +1,7 @@
 const express = require('express');
 const Partner = require('../models/partner');
 const partnerRouter = express.Router(); // create a new Express router
-
+const authenticate = require('../authenticate');
 partnerRouter.route('/') // use the router.route method to chain all routing methods together
 
 .get((req, res, next) => {
@@ -14,7 +14,7 @@ partnerRouter.route('/') // use the router.route method to chain all routing met
     .catch(err => next(err)); // pass any errors to the Express error handler
 })
 
-.post((req, res, next) => {
+.post(authenticate.verifyUser,(req, res, next) => {
     Partner.create(req.body) // use the Partner model to create a new partner document in the MongoDB database
     .then(partner => { // use a promise method to handle the returned partner
         console.log('Partner Created ', partner);
@@ -25,12 +25,13 @@ partnerRouter.route('/') // use the router.route method to chain all routing met
     .catch(err => next(err)); // pass any errors to the Express error handler
 })
 
-.put((req, res) => {
+.put(authenticate.verifyUser,(req, res) => {
     res.statusCode = 403;
+    res.setHeader('Content-Type', 'text/plain');
     res.end('PUT operation not supported on /partners');
 })
 
-.delete((req, res, next) => {
+.delete(authenticate.verifyUser,(req, res, next) => {
     Partner.deleteMany() // use the Partner model to delete all partners from the MongoDB database
     .then(response => { // use a promise method to handle the returned response
         res.statusCode = 200;
@@ -42,7 +43,7 @@ partnerRouter.route('/') // use the router.route method to chain all routing met
 
 partnerRouter.route('/:partnerId') // use the router.route method to chain all routing methods together
 
-.get((req, res, next) => {
+.get(authenticate.verifyUser,(req, res, next) => {
     Partner.findById(req.params.partnerId) // use the Partner model to retrieve a specific partner from the MongoDB database
     .then(partner => { // use a promise method to handle the returned partner
         res.statusCode = 200;
@@ -52,12 +53,13 @@ partnerRouter.route('/:partnerId') // use the router.route method to chain all r
     .catch(err => next(err)); // pass any errors to the Express error handler
 })
 
-.post((req, res) => {
+.post(authenticate.verifyUser,(req, res) => {
     res.statusCode = 403;
+    res.setHeader('Content-Type', 'text/plain');
     res.end(`POST operation not supported on /partners/${req.params.partnerId}`);
 })
 
-.put((req, res, next) => {
+.put(authenticate.verifyUser,(req, res, next) => {
     Partner.findByIdAndUpdate(req.params.partnerId, { // use the Partner model to update a specific partner in the MongoDB database
         $set: req.body
     }, { new: true }) // use the $set operator to update the partner document with the data in the request body
@@ -70,7 +72,7 @@ partnerRouter.route('/:partnerId') // use the router.route method to chain all r
 })
 
 
-.delete((req, res, next) => {
+.delete(authenticate.verifyUser,(req, res, next) => {
     Partner.findByIdAndDelete(req.params.partnerId) // use the Partner model to delete a specific partner from the MongoDB database
     .then(response => { // use a promise method to handle the returned response
         res.statusCode = 200;

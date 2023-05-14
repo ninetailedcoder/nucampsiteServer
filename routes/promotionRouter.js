@@ -1,6 +1,7 @@
 const express = require('express');
 const Promotion = require('../models/promotion'); // import the Promotion model
 const promotionRouter = express.Router(); // create a new Express router
+const authenticate = require('../authenticate'); // import the authenticate module
 promotionRouter.route('/') // use the router.route method to chain all routing methods together
 
 .get((req, res, next) => {
@@ -12,7 +13,7 @@ promotionRouter.route('/') // use the router.route method to chain all routing m
     })
     .catch(err => next(err)); // pass any errors to the Express error handler
 })
-.post((req, res,next) => {
+.post(authenticate.verifyUser,(req, res,next) => {
     Promotion.create(req.body) // use the Promotion model to create a new promotion document in the MongoDB database
     .then(promotion => { // use a promise method to handle the returned promotion
         console.log('Promotion Created ', promotion);
@@ -23,12 +24,13 @@ promotionRouter.route('/') // use the router.route method to chain all routing m
     .catch(err => next(err)); // pass any errors to the Express error handler
 })
 
-.put((req, res) => {
+.put(authenticate.verifyUser,(req, res) => {
     res.statusCode = 403;
+    res.setHeader('Content-Type', 'text/plain');
     res.end('PUT operation not supported on /promotions');
 })
 
-.delete((req, res, next) => {
+.delete(authenticate.verifyUser,(req, res, next) => {
     Promotion.deleteMany() // use the Promotion model to delete all promotions from the MongoDB database
     .then(response => { // use a promise method to handle the returned response
         res.statusCode = 200;
@@ -51,12 +53,13 @@ promotionRouter.route('/:promotionId') // use the router.route method to chain a
     .catch(err => next(err)); // pass any errors to the Express error handler
 })
 
-.post((req, res) => {
+.post(authenticate.verifyUser,(req, res) => {
     res.statusCode = 403;
+    res.setHeader('Content-Type', 'text/plain');
     res.end(`POST operation not supported on /promotions/${req.params.promotionId}`);
 })
 
-.put((req, res,next) => {
+.put(authenticate.verifyUser,(req, res,next) => {
     Promotion.findByIdAndUpdate(req.params.promotionId, { // use the Promotion model to update a specific promotion in the MongoDB database
         $set: req.body
     }, { new: true })
@@ -69,7 +72,7 @@ promotionRouter.route('/:promotionId') // use the router.route method to chain a
     .catch(err => next(err)); // pass any errors to the Express error handler
 })
 
-.delete((req, res,next) => {
+.delete(authenticate.verifyUser,(req, res,next) => {
     Promotion.findByIdAndDelete(req.params.promotionId) // use the Promotion model to delete a specific promotion from the MongoDB database
     .then(response => { // use a promise method to handle the returned response
 

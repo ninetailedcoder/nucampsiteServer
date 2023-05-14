@@ -1,73 +1,57 @@
 const express = require('express');
 const User = require('../models/user');``
 const router = express.Router();
+const passport = require('passport');
+const authenticate = require('../authenticate');
+const user = require('../models/user');
+
 
 /* GET users listing. */
 router.get('/', function(req, res, next) {
   res.send('respond with a resource');
 });
 
-router.post('/signup', (req, res, next) => { // use the router.route method to chain all routing methods together
-  User.findOne({username: req.body.username}) // use the User model to check if a user with the specified username already exists in the MongoDB database
-  .then(user => { // use a promise method to handle the returned user 
-      if (user) { // if a user with the specified username already exists in the MongoDB database
-          const err = new Error(`User ${req.body.username} already exists!`); // create a new error
-          err.status = 403; // set the error status code to 403 (Forbidden)
-          return next(err); // pass the error to the Express error handler
-      } else { // if a user with the specified username does not already exist in the MongoDB database
-          User.create({ // use the User model to create a new user document in the MongoDB database
-              username: req.body.username, // set the username
-              password: req.body.password // set the password
-          })
-          .then(user => { // use a promise method to handle the returned user
-              res.statusCode = 200;
-              res.setHeader('Content-Type', 'application/json');
-              res.json({status: 'Registration Successful!', user: user}); // send a JSON response back to the client
-          }
-          )
-          .catch(err => next(err)); // pass any errors to the Express error handler
-      }
-  })
-  .catch(err => next(err)); // pass any errors to the Express error handler
+router.post('/signup', (req, res) => { // use the router.route method to chain all routing methods together
+    User.register( // use the User model to register a new user
+        new User({username: req.body.username}), // create a new user with the specified username
+        req.body.password, // specify the password for the new user
+        (err, user) => { // use a callback function to handle any errors
+            if (err) { // if an error occurs
+                res.statusCode = 500; // set the status code to 500 (Internal Server Error) 
+                res.setHeader('Content-Type', 'application/json'); // set the Content-Type header to application/json
+                res.json({err: err}); // return a JSON-formatted response with the error details
+            } else { // if no error occurs
+                if (req.body.firstname) { // if the request body contains a firstname property
+                    user.firstname = req.body.firstname; // set the firstname property of the user document to the value of the firstname property in the request body
+                }
+                if (req.body.lastname) { // if the request body contains a lastname property
+                    user.lastname = req.body.lastname; // set the lastname property of the user document to the value of the lastname property in the request body
+                }
+                user.save(err => { // save the user document to the MongoDB database
+                    if (err) { // if an error occurs
+                        res.statusCode = 500; // set the status code to 500 (Internal Server Error)
+                        res.setHeader('Content-Type', 'application/json'); // set the Content-Type header to application/json
+                        res.json({err: err}); // return a JSON-formatted response with the error details
+                        return;
+                    }
+
+                });
+                passport.authenticate('local')(req, res, () => { // authenticate the user
+                    res.statusCode = 200; // set the status code to 200 (OK)
+                    res.setHeader('Content-Type', 'application/json'); // set the Content-Type header to application/json
+                    res.json({success: true, status: 'Registration Successful!'}); // return a JSON-formatted response indicating that the registration was successful
+                });
+            }
+        }
+    )
 });
 
-router.post('/login', (req, res, next) => { // use the router.route method to chain all routing methods together
-  if (!req.session.user) { // if the user is not already logged in
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-        const err = new Error('You are not authenticated!');
-        res.setHeader('WWW-Authenticate', 'Basic');
-        err.status = 401;
-        return next(err);
-    }
+router.post('/login', passport.authenticate('local'), (req, res) => { // use the router.route method to chain all routing methods together.
+    const token = authenticate.getToken({_id: req.user._id}); // generate a token for the user
+    res.statusCode = 200; // set the status code to 200 (OK)
+    res.setHeader('Content-Type', 'application/json'); // set the Content-Type header to application/json
+    res.json({success: true, token: token, status: 'You are successfully logged in!'}); // return a JSON-formatted response indicating that the user was successfully logged in
 
-    const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':');
-    const username = auth[0];
-    const password = auth[1];
-
-    User.findOne({username: username}) // use the User model to find a user with the specified username in the MongoDB database
-    .then(user => { // use a promise method to handle the returned user
-        if (!user) { // if a user with the specified username does not exist in the MongoDB database
-            const err = new Error(`User ${username} does not exist!`); // create a new error
-            err.status = 401; // set the error status code to 401 (Unauthorized)
-            return next(err); // pass the error to the Express error handler
-        } else if (user.password !== password) { // if the password provided by the client does not match the password stored in the MongoDB database
-            const err = new Error('Your password is incorrect!'); // create a new error
-            err.status = 401; // set the error status code to 401 (Unauthorized)
-            return next(err); // pass the error to the Express error handler
-        } else if (user.username === username && user.password === password) { // if the username and password provided by the client match the username and password stored in the MongoDB database
-            req.session.user = 'authenticated'; // set the session user to 'authenticated'
-            res.statusCode = 200; // set the status code to 200 (OK)
-            res.setHeader('Content-Type', 'text/plain'); // set the Content-Type header to text/plain
-            res.end('You are authenticated!'); // send the response
-        }
-    })
-    .catch(err => next(err)); // pass any errors to the Express error handler
-  } else { // if the user is already logged in
-          res.statusCode = 200; // set the status code to 200 (OK)
-          res.setHeader('Content-Type', 'text/plain'); // set the Content-Type header to text/plain
-          res.end('You are already authenticated!'); // send the response
-      } 
 });
 
 router.get('/logout', (req, res, next) => { // use the router.route method to chain all routing methods together
