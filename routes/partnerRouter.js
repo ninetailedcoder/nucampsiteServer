@@ -14,7 +14,7 @@ partnerRouter.route('/') // use the router.route method to chain all routing met
     .catch(err => next(err)); // pass any errors to the Express error handler
 })
 
-.post(authenticate.verifyUser,(req, res, next) => {
+.post(authenticate.verifyUser,authenticate.verifyAdmin,(req, res, next) => {
     Partner.create(req.body) // use the Partner model to create a new partner document in the MongoDB database
     .then(partner => { // use a promise method to handle the returned partner
         console.log('Partner Created ', partner);
@@ -31,7 +31,7 @@ partnerRouter.route('/') // use the router.route method to chain all routing met
     res.end('PUT operation not supported on /partners');
 })
 
-.delete(authenticate.verifyUser,(req, res, next) => {
+.delete(authenticate.verifyUser,authenticate.verifyAdmin,(req, res, next) => {
     Partner.deleteMany() // use the Partner model to delete all partners from the MongoDB database
     .then(response => { // use a promise method to handle the returned response
         res.statusCode = 200;
@@ -59,7 +59,7 @@ partnerRouter.route('/:partnerId') // use the router.route method to chain all r
     res.end(`POST operation not supported on /partners/${req.params.partnerId}`);
 })
 
-.put(authenticate.verifyUser,(req, res, next) => {
+.put(authenticate.verifyUser,authenticate.verifyAdmin,(req, res, next) => {
     Partner.findByIdAndUpdate(req.params.partnerId, { // use the Partner model to update a specific partner in the MongoDB database
         $set: req.body
     }, { new: true }) // use the $set operator to update the partner document with the data in the request body
@@ -72,7 +72,7 @@ partnerRouter.route('/:partnerId') // use the router.route method to chain all r
 })
 
 
-.delete(authenticate.verifyUser,(req, res, next) => {
+.delete(authenticate.verifyUser,authenticate.verifyAdmin,(req, res, next) => {
     Partner.findByIdAndDelete(req.params.partnerId) // use the Partner model to delete a specific partner from the MongoDB database
     .then(response => { // use a promise method to handle the returned response
         res.statusCode = 200;

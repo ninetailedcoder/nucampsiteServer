@@ -8,7 +8,13 @@ const user = require('../models/user');
 
 /* GET users listing. */
 router.get('/', function(req, res, next) {
-  res.send('respond with a resource');
+    if(!req.user.admin) {
+        res.statusCode = 403;
+        res.end('You are not authorized to perform this operation!');
+        return;
+    } else { 
+    res.send('respond with a resource');
+    }
 });
 
 router.post('/signup', (req, res) => { // use the router.route method to chain all routing methods together

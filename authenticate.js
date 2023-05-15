@@ -39,3 +39,13 @@ exports.jwtPassport = passport.use( // use the passport-jwt strategy
 );
 
 exports.verifyUser = passport.authenticate('jwt', {session: false}); // export the verifyUser method that will be used to verify incoming requests containing JSON Web Tokens
+
+exports.verifyAdmin = (req, res, next) => { // export the verifyAdmin method that will be used to verify incoming requests containing JSON Web Tokens
+    if (req.user.admin) { // if the user is an administrator
+        return next(); // call the next middleware function
+    } else { // if the user is not an administrator
+        const err = new Error('You are not authorized to perform this operation!'); // create a new error object
+        err.status = 403; // set the status code of the error object to 403
+        return next(err); // pass the error object to the next middleware function
+    }
+};
