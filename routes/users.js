@@ -71,6 +71,14 @@ router.get('/logout',cors.corsWithOptions, (req, res, next) => { // use the rout
   }
 });
 
+router.get('/facebook/token', passport.authenticate('facebook-token'), (req, res) => { // use the router.route method to chain all routing methods together
+    if (req.user) { // if the user exists
+        const token = authenticate.getToken({_id: req.user._id}); // generate a token for the user
+        res.statusCode = 200; // set the status code to 200 (OK)
+        res.setHeader('Content-Type', 'application/json'); // set the Content-Type header to application/json
+        res.json({success: true, token: token, status: 'You are successfully logged in!'}); // return a JSON-formatted response indicating that the user was successfully logged in
+    }
+});
 
 
 module.exports = router;

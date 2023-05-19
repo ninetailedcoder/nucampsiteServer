@@ -14,7 +14,8 @@ const userSchema = new Schema({
     lastname: { // define the lastname field
         type: String, // set the data type to String
         default: '' // set the default value to an empty string
-    }
+    },
+    facebookId: String // define the facebookId field
 });
 
 userSchema.plugin(passportLocalMongoose); // use the passport-local-mongoose plugin

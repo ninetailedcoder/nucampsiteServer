@@ -4,6 +4,7 @@ const User = require('./models/user');
 const JwtStrategy = require('passport-jwt').Strategy; // import the passport-jwt strategy
 const ExtractJwt = require('passport-jwt').ExtractJwt; // import the passport-jwt strategy
 const jwt = require('jsonwebtoken'); // import the jsonwebtoken module
+const FacebookTokenStrategy = require('passport-facebook-token'); // import the passport-facebook-token strategy
 
 const config = require('./config.js'); // import the config.js file
 
@@ -49,3 +50,34 @@ exports.verifyAdmin = (req, res, next) => { // export the verifyAdmin method tha
         return next(err); // pass the error object to the next middleware function
     }
 };
+
+exports.facebookPassport = passport.use( // use the passport-facebook-token strategy
+    new FacebookTokenStrategy( // create a new instance of the passport-facebook-token strategy
+        { // specify the options for the strategy
+            clientID: config.facebook.clientId, // specify the client ID
+            clientSecret: config.facebook.clientSecret // specify the client secret
+        },
+        (accessToken, refreshToken, profile, done) => { // specify a callback function that will be used to supply the profile extracted from the access token to the application
+            User.findOne({facebookId: profile.id}, (err, user) => { // use the findOne method to search the database for a user document with the specified Facebook ID
+                if (err) { // if an error occurs
+                    return done(err, false); // return an error and a false value
+                }
+                if (!err && user !== null) { // if no error occurs and the user document is found
+                    return done(null, user); // return a null value and the user document
+                } else { // if no error occurs and the user document is not found
+                    user = new User({username: profile.displayName}); // create a new user document with the specified username
+                    user.facebookId = profile.id; // set the facebookId field of the user document to the specified Facebook ID
+                    user.firstname = profile.name.givenName; // set the firstname field of the user document to the specified first name
+                    user.lastname = profile.name.familyName; // set the lastname field of the user document to the specified last name
+                    user.save((err, user) => { // save the user document to the MongoDB database
+                        if (err) { // if an error occurs
+                            return done(err, false); // return an error and a false value
+                        } else { // if no error occurs
+                            return done(null, user); // return a null value and the user document
+                        }
+                    })
+                }
+            });
+        }
+    )
+);
