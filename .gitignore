@@ -1,2 +1,4 @@
 node_modules
 init
+bin/server.cert
+bin/server.key

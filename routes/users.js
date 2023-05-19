@@ -1,23 +1,22 @@
 const express = require('express');
 const User = require('../models/user');``
-const router = express.Router();
 const passport = require('passport');
 const authenticate = require('../authenticate');
-const user = require('../models/user');
+const cors = require('./cors');
 
-
+const router = express.Router();
 /* GET users listing. */
-router.get('/', function(req, res, next) {
-    if(!req.user.admin) {
-        res.statusCode = 403;
-        res.end('You are not authorized to perform this operation!');
-        return;
-    } else { 
-    res.send('respond with a resource');
-    }
+router.get('/', cors.corsWithOptions,authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
+    User.find()
+    .then((users) => {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.json(users);
+    })
+    .catch(err => next(err));
 });
 
-router.post('/signup', (req, res) => { // use the router.route method to chain all routing methods together
+router.post('/signup', cors.corsWithOptions, (req, res) => { // use the router.route method to chain all routing methods together
     User.register( // use the User model to register a new user
         new User({username: req.body.username}), // create a new user with the specified username
         req.body.password, // specify the password for the new user
@@ -52,7 +51,7 @@ router.post('/signup', (req, res) => { // use the router.route method to chain a
     )
 });
 
-router.post('/login', passport.authenticate('local'), (req, res) => { // use the router.route method to chain all routing methods together.
+router.post('/login',cors.corsWithOptions, passport.authenticate('local'), (req, res) => { // use the router.route method to chain all routing methods together.
     const token = authenticate.getToken({_id: req.user._id}); // generate a token for the user
     res.statusCode = 200; // set the status code to 200 (OK)
     res.setHeader('Content-Type', 'application/json'); // set the Content-Type header to application/json
@@ -60,7 +59,7 @@ router.post('/login', passport.authenticate('local'), (req, res) => { // use the
 
 });
 
-router.get('/logout', (req, res, next) => { // use the router.route method to chain all routing methods together
+router.get('/logout',cors.corsWithOptions, (req, res, next) => { // use the router.route method to chain all routing methods together
   if (req.session) { // if the session exists
       req.session.destroy(); // destroy the session
       res.clearCookie('session-id'); // clear the session cookie
